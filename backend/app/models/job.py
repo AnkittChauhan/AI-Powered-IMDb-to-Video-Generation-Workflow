@@ -20,6 +20,7 @@ class Job(Base):
     #         asset_gathering, video_composition, export, completed, failed, cancelled
     
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     
