@@ -25,9 +25,8 @@ from sqlalchemy.orm import Session
 import requests
 from bs4 import BeautifulSoup
 
-from app.core.error_handling import RetryableError, PermanentError, InputValidator
+from app.core.error_handling import RetryableError, PermanentError
 from app.models.job import Metadata
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 

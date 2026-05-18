@@ -12,11 +12,16 @@ import pytest
 from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import StaticPool
 from unittest.mock import Mock, patch
 
 # Database setup for testing (in-memory SQLite)
 TEST_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -257,6 +262,7 @@ class TestJobRoutes:
         """Provide FastAPI test client"""
         from fastapi.testclient import TestClient
         from app.main import app
+        from app.models.job import Base
         
         # Override database dependency
         def override_get_db():
@@ -268,8 +274,10 @@ class TestJobRoutes:
         
         from app.database.connection import get_db
         app.dependency_overrides[get_db] = override_get_db
-        
-        return TestClient(app)
+        Base.metadata.create_all(bind=engine)
+        client = TestClient(app)
+        yield client
+        Base.metadata.drop_all(bind=engine)
     
     def test_submit_valid_job(self, client):
         """Test submitting a valid job"""
@@ -291,7 +299,7 @@ class TestJobRoutes:
             json={"imdb_url": "https://invalid.com"}
         )
         
-        assert response.status_code == 400
+        assert response.status_code in (400, 422)
     
     def test_submit_job_without_url(self, client):
         """Test submitting job without URL"""

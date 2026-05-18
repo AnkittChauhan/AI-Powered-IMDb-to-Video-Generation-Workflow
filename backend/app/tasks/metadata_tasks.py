@@ -21,14 +21,13 @@ Retry Strategy:
 """
 from celery import shared_task
 from celery.utils.log import get_task_logger
-from sqlalchemy.orm import Session
 
 from app.core.error_handling import RetryableError, PermanentError
 from app.core.job_coordinator import JobCoordinator
 from app.services.metadata_service import MetadataService
 from app.database.connection import SessionLocal
 from app.utils.constants import STAGE_RETRY_LIMITS
-from app.models.job import JobStage
+from app.models.job import Metadata
 
 logger = get_task_logger(__name__)
 
@@ -44,13 +43,12 @@ logger = get_task_logger(__name__)
     retry_backoff_max=600,  # Max backoff 10 minutes
     retry_jitter=True,
 )
-def extract_metadata_task(self, job_id: str, imdb_url: str):
+def extract_metadata_task(self, job_id: str):
     """
     Extract IMDb metadata for a movie.
     
     Args:
         job_id: Unique job identifier
-        imdb_url: IMDb movie URL (e.g., https://www.imdb.com/title/tt0111161/)
     
     Returns:
         dict: {
@@ -68,14 +66,16 @@ def extract_metadata_task(self, job_id: str, imdb_url: str):
     db = SessionLocal()
     try:
         logger.info(f"[{job_id}] Starting metadata extraction")
-        logger.info(f"[{job_id}] IMDb URL: {imdb_url}")
         
         # Get job from database
         coordinator = JobCoordinator(db)
-        job = coordinator._get_job(job_id)
-        
-        if not job:
-            raise PermanentError(f"Job not found: {job_id}")
+        try:
+            job = coordinator._get_job(job_id)
+        except ValueError as e:
+            raise PermanentError(str(e))
+
+        imdb_url = job.imdb_url
+        logger.info(f"[{job_id}] IMDb URL: {imdb_url}")
         
         logger.info(f"[{job_id}] Job found, status: {job.status}")
         
@@ -92,22 +92,16 @@ def extract_metadata_task(self, job_id: str, imdb_url: str):
         
         # Update job with metadata reference
         imdb_id = metadata["imdb_id"]
-        job.metadata_id = imdb_id  # Store reference to cached metadata
+        cached_metadata = db.query(Metadata).filter(Metadata.imdb_id == imdb_id).first()
+        if cached_metadata:
+            job.metadata_id = cached_metadata.id
         job.display_name = metadata["title"]
         db.commit()
         logger.info(f"[{job_id}] Job updated with metadata reference")
         
-        # Transition to next stage
+        # Transition to next stage (enqueues next task through coordinator)
         coordinator.transition_to_next_stage(job_id)
         logger.info(f"[{job_id}] Transitioned to next stage: {job.status}")
-        
-        # Enqueue next task (script generation)
-        from app.tasks.script_tasks import generate_script_task
-        generate_script_task.apply_async(
-            args=(job_id,),
-            queue="script"
-        )
-        logger.info(f"[{job_id}] Enqueued script generation task")
         
         return {
             "status": "success",
@@ -123,7 +117,7 @@ def extract_metadata_task(self, job_id: str, imdb_url: str):
         # Mark job as failed
         try:
             coordinator = JobCoordinator(db)
-            coordinator.handle_failure(job_id, e, should_retry=False)
+            coordinator.handle_failure(job_id, str(e), should_retry=False)
         except Exception as cleanup_error:
             logger.error(f"[{job_id}] Error marking job failed: {str(cleanup_error)}")
         raise
@@ -134,13 +128,12 @@ def extract_metadata_task(self, job_id: str, imdb_url: str):
             f"[{job_id}] Retryable error in metadata extraction "
             f"(attempt {self.request.retries}/{self.max_retries}): {str(e)}"
         )
-        # Let Celery retry with backoff
-        raise self.retry(exc=e)
+        raise
     
     except Exception as e:
         logger.error(f"[{job_id}] Unexpected error in metadata extraction: {str(e)}")
         # Convert to retryable to allow recovery
-        raise self.retry(exc=RetryableError(str(e)))
+        raise RetryableError(str(e))
     
     finally:
         db.close()

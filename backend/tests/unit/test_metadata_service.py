@@ -145,7 +145,7 @@ class TestMetadataServiceErrorHandling:
         with pytest.raises(RetryableError) as exc_info:
             MetadataService._scrape_imdb("tt0111161")
         
-        assert "timeout" in str(exc_info.value).lower()
+        assert "timed out" in str(exc_info.value).lower()
     
     @patch("app.services.metadata_service.requests.get")
     def test_scrape_imdb_connection_error_retryable(self, mock_get):

@@ -63,6 +63,7 @@ class JobCoordinator:
     
     # Stage pipeline (order matters)
     PIPELINE = [
+        JobStage.PENDING,
         JobStage.METADATA_EXTRACTION,
         JobStage.SCRIPT_GENERATION,
         JobStage.TTS_SUBTITLES,
@@ -75,7 +76,7 @@ class JobCoordinator:
     # Map stages to task names (for Celery)
     STAGE_TO_TASK = {
         JobStage.METADATA_EXTRACTION: "app.tasks.metadata_tasks.extract_metadata_task",
-        JobStage.SCRIPT_GENERATION: "app.tasks.ai_tasks.generate_script_task",
+        JobStage.SCRIPT_GENERATION: "app.tasks.script_tasks.generate_script_task",
         JobStage.TTS_SUBTITLES: "app.tasks.tts_tasks.generate_tts_task",
         JobStage.ASSET_GATHERING: "app.tasks.asset_tasks.gather_assets_task",
         JobStage.VIDEO_COMPOSITION: "app.tasks.video_tasks.compose_video_task",
@@ -397,12 +398,20 @@ class JobCoordinator:
         
         logger.info(f"Enqueueing task {task_name} for job {job_id} (retry {retry_attempt})")
         
-        # Enqueue with backoff
-        task.apply_async(
-            args=[job_id],
-            countdown=countdown,
-            task_id=f"{job_id}:{stage.value}:{retry_attempt}",
-        )
+        # Metadata task requires job_id only; task reads imdb_url from database.
+        task_args = [job_id]
+
+        try:
+            # Enqueue with backoff
+            task.apply_async(
+                args=task_args,
+                countdown=countdown,
+                task_id=f"{job_id}:{stage.value}:{retry_attempt}",
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to enqueue task {task_name} for job {job_id}: {str(e)}"
+            )
     
     def _calculate_backoff(self, retry_attempt: int) -> int:
         """

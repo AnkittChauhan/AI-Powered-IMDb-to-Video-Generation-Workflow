@@ -89,13 +89,13 @@ celery_app.conf.update(
 default_exchange = Exchange("imdb_video", type="direct")
 
 celery_app.conf.task_queues = (
-    Queue("metadata", exchange=default_exchange, priority=10, routing_key="metadata"),
-    Queue("script", exchange=default_exchange, priority=9, routing_key="script"),
-    Queue("tts", exchange=default_exchange, priority=8, routing_key="tts"),
-    Queue("assets", exchange=default_exchange, priority=8, routing_key="assets"),
-    Queue("video", exchange=default_exchange, priority=7, routing_key="video"),
-    Queue("export", exchange=default_exchange, priority=6, routing_key="export"),
-    Queue("default", exchange=default_exchange, priority=5, routing_key="default"),
+    Queue("metadata", exchange=default_exchange, routing_key="metadata", queue_arguments={"x-max-priority": 10}),
+    Queue("script", exchange=default_exchange, routing_key="script", queue_arguments={"x-max-priority": 10}),
+    Queue("tts", exchange=default_exchange, routing_key="tts", queue_arguments={"x-max-priority": 10}),
+    Queue("assets", exchange=default_exchange, routing_key="assets", queue_arguments={"x-max-priority": 10}),
+    Queue("video", exchange=default_exchange, routing_key="video", queue_arguments={"x-max-priority": 10}),
+    Queue("export", exchange=default_exchange, routing_key="export", queue_arguments={"x-max-priority": 10}),
+    Queue("default", exchange=default_exchange, routing_key="default", queue_arguments={"x-max-priority": 10}),
 )
 
 # ============================================================================

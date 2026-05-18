@@ -128,7 +128,7 @@ async def submit_job(
     # ===== Step 4: Return response =====
     return JobStatusResponse(
         job_id=job_id,
-        status=job.status,
+        status=JobStage.PENDING.value,
         created_at=job.created_at.isoformat(),
         poll_url=f"/api/jobs/{job_id}",
     )

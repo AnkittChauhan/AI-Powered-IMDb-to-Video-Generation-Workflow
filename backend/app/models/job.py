@@ -33,7 +33,7 @@ class Job(Base):
     display_name = Column(String(255), nullable=True)
     
     # Relationships
-    metadata = relationship("Metadata", back_populates="jobs")
+    movie_metadata = relationship("Metadata", back_populates="jobs")
     execution_logs = relationship("JobExecutionLog", back_populates="job", cascade="all, delete-orphan")
     
     __table_args__ = (
@@ -71,7 +71,7 @@ class Metadata(Base):
     refresh_count = Column(Integer, default=0)
     
     # Relationships
-    jobs = relationship("Job", back_populates="metadata")
+    jobs = relationship("Job", back_populates="movie_metadata")
     
     def __repr__(self):
         return f"<Metadata {self.imdb_id}: {self.title}>"
