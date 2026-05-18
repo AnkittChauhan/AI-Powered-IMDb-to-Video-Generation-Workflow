@@ -1,14 +1,35 @@
 """
-Task: Stage handler
+Stage 2: Script Generation Task
 
-This module defines Celery tasks for a specific pipeline stage.
-Each task is a discrete unit of work in the video generation workflow.
+Placeholder for now. Will be implemented in Chunk 3 (AIService).
+
+This task will:
+1. Fetch metadata
+2. Call OpenAI API to generate script
+3. Parse script into scenes
+4. Store script in database
+5. Transition to next stage (TTS)
 """
 from celery import shared_task
-import logging
+from celery.utils.log import get_task_logger
 
-logger = logging.getLogger(__name__)
+logger = get_task_logger(__name__)
 
-# Tasks will be added here in subsequent chunks
 
-__all__ = []
+@shared_task(
+    bind=True,
+    queue="script",
+    time_limit=15 * 60,  # 15 minutes hard limit
+    soft_time_limit=12 * 60,  # 12 minutes soft limit
+)
+def generate_script_task(self, job_id: str):
+    """
+    Placeholder for script generation.
+    
+    To be implemented in Chunk 3.
+    """
+    logger.info(f"[{job_id}] Script generation placeholder")
+    return {"status": "placeholder", "job_id": job_id}
+
+
+__all__ = ["generate_script_task"]
