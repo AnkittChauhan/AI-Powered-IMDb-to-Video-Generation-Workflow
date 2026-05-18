@@ -1,7 +1,3 @@
-"""
-IMDb Video Generation Backend
-FastAPI + Celery + PostgreSQL + Redis
-"""
 FROM python:3.11-slim
 
 WORKDIR /app

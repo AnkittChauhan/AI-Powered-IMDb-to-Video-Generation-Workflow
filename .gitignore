@@ -11,6 +11,7 @@ backend/build/
 # Frontend
 frontend/node_modules/
 frontend/.next/
+frontend/tsconfig.tsbuildinfo
 frontend/dist/
 frontend/build/
 
@@ -40,4 +41,3 @@ Thumbs.db
 
 PHASE_0_SUMMARY.md
 CHUNK_2_METADATA_SERVICE.md
-*__init__

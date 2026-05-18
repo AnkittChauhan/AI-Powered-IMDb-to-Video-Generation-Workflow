@@ -2,6 +2,7 @@
 IMDb Video Generation Backend
 FastAPI application entry point
 """
+from contextlib import asynccontextmanager
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,11 +19,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize and clean up application resources."""
+    logger.info("🚀 Starting IMDb Video Generator API")
+    init_db()
+    logger.info("✓ Database initialized")
+    yield
+    logger.info("🛑 Shutting down IMDb Video Generator API")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="IMDb Video Generator",
     description="AI-powered video generation from IMDb movie URLs",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Middleware
@@ -35,22 +48,6 @@ app.add_middleware(
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-
-
-# Startup/Shutdown events
-@app.on_event("startup")
-async def startup_event():
-    """Initialize on application startup"""
-    logger.info("🚀 Starting IMDb Video Generator API")
-    init_db()
-    logger.info("✓ Database initialized")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on application shutdown"""
-    logger.info("🛑 Shutting down IMDb Video Generator API")
-
 
 # Routes
 app.include_router(health.router, tags=["Health"])

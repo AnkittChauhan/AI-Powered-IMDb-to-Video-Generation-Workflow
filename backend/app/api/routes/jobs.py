@@ -3,7 +3,6 @@ Job management API routes
 """
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
 from uuid import uuid4
 import logging
 from datetime import datetime
@@ -14,15 +13,12 @@ from app.core.job_coordinator import JobCoordinator, JobStage
 from app.core.error_handling import (
     InputValidator,
     InvalidInputError,
-    PermanentError,
-    RetryableError,
 )
 from app.api.schemas import (
     JobSubmitRequest,
     JobStatusResponse,
     JobProgressResponse,
     ErrorResponse,
-    HealthResponse,
 )
 from app.utils.constants import STAGE_PROGRESS_MAP
 
@@ -331,52 +327,3 @@ async def download_video(
                 "message": "Failed to download video",
             }
         )
-
-
-@router.get(
-    "/health",
-    response_model=HealthResponse,
-    tags=["health"],
-)
-async def health_check(db: Session = Depends(get_db)):
-    """
-    Health check endpoint.
-    
-    Returns:
-    - 200 OK: System is healthy
-    - Services dict contains status of each component
-    """
-    services = {}
-    overall_status = "healthy"
-    
-    # ===== Check database =====
-    try:
-        db.execute("SELECT 1")
-        services["database"] = "ok"
-    except Exception as e:
-        logger.error(f"Database health check failed: {str(e)}")
-        services["database"] = "error"
-        overall_status = "degraded"
-    
-    # ===== Check Redis (via Celery) =====
-    try:
-        from app.tasks.celery_app import celery_app
-        celery_app.connection().connect()
-        services["redis"] = "ok"
-    except Exception as e:
-        logger.warning(f"Redis health check failed: {str(e)}")
-        services["redis"] = "error"
-        overall_status = "degraded"
-    
-    # ===== Check storage =====
-    try:
-        import os
-        from app.utils.constants import STORAGE_BASE_PATH
-        os.makedirs(STORAGE_BASE_PATH, exist_ok=True)
-        services["storage"] = "ok"
-    except Exception as e:
-        logger.warning(f"Storage health check failed: {str(e)}")
-        services["storage"] = "error"
-        overall_status = "degraded"
-    
-    return HealthResponse(status=overall_status, services=services)

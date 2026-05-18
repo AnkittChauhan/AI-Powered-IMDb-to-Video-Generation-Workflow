@@ -1,7 +1,7 @@
 """
 Application configuration
 """
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 
@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
+    
+    # Metadata Cache
+    METADATA_CACHE_TTL_SECONDS: int = 2592000  # 30 days
+    METADATA_WORKER_CONCURRENCY: int = 2
+    ADMIN_TOKEN: str = "secret-admin-token-change-in-prod"
     
     # OpenAI
     OPENAI_API_KEY: str = ""
@@ -45,9 +50,7 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
 
 settings = Settings()

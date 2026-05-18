@@ -1,9 +1,8 @@
 """
 Request and response schemas with validation
 """
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, Dict, Any
-from datetime import datetime
 import re
 
 
@@ -12,11 +11,12 @@ class JobSubmitRequest(BaseModel):
     imdb_url: str = Field(
         ...,
         description="IMDb movie URL (e.g., https://www.imdb.com/title/tt0111161/)",
-        example="https://www.imdb.com/title/tt0111161/"
+        json_schema_extra={"example": "https://www.imdb.com/title/tt0111161/"},
     )
     
-    @validator("imdb_url")
-    def validate_imdb_url(cls, v):
+    @field_validator("imdb_url")
+    @classmethod
+    def validate_imdb_url(cls, v: str) -> str:
         """Validate IMDb URL format"""
         pattern = r"https://www\.imdb\.com/title/(tt\d+)/?$"
         if not re.match(pattern, v):
@@ -24,13 +24,12 @@ class JobSubmitRequest(BaseModel):
                 "Invalid IMDb URL format. Must be: https://www.imdb.com/title/tt<digits>/"
             )
         return v
-    
-    class Config:
-        schema_extra = {
-            "example": {
-                "imdb_url": "https://www.imdb.com/title/tt0111161/"
-            }
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {"imdb_url": "https://www.imdb.com/title/tt0111161/"}
         }
+    )
 
 
 class JobStatusResponse(BaseModel):
@@ -41,8 +40,8 @@ class JobStatusResponse(BaseModel):
     poll_url: Optional[str] = Field(None, description="URL to poll for job status")
     progress: Optional[Dict[str, Any]] = Field(None, description="Initial progress info")
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "job_id": "550e8400-e29b-41d4-a716-446655440000",
                 "status": "pending",
@@ -50,6 +49,7 @@ class JobStatusResponse(BaseModel):
                 "poll_url": "/api/jobs/550e8400-e29b-41d4-a716-446655440000"
             }
         }
+    )
 
 
 class ProgressDetail(BaseModel):
@@ -96,8 +96,8 @@ class JobProgressResponse(BaseModel):
     error: Optional[ErrorDetail] = Field(None, description="Error info if failed")
     result: Optional[VideoResultDetail] = Field(None, description="Result if completed")
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "job_id": "550e8400-e29b-41d4-a716-446655440000",
                 "status": "script_generation",
@@ -113,6 +113,7 @@ class JobProgressResponse(BaseModel):
                 }
             }
         }
+    )
 
 
 class HealthResponse(BaseModel):
@@ -120,8 +121,8 @@ class HealthResponse(BaseModel):
     status: str = Field(..., description="Overall health status (healthy, degraded, unhealthy)")
     services: Dict[str, str] = Field(..., description="Individual service health status")
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "status": "healthy",
                 "services": {
@@ -131,6 +132,7 @@ class HealthResponse(BaseModel):
                 }
             }
         }
+    )
 
 
 class ErrorResponse(BaseModel):
@@ -140,8 +142,8 @@ class ErrorResponse(BaseModel):
     details: Optional[Dict[str, Any]] = Field(None, description="Additional error details")
     retry_after_seconds: Optional[int] = Field(None, description="Retry-After hint (if applicable)")
     
-    class Config:
-        schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "error_code": "invalid_input",
                 "message": "Invalid IMDb URL format",
@@ -151,3 +153,4 @@ class ErrorResponse(BaseModel):
                 }
             }
         }
+    )
