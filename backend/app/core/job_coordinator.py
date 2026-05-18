@@ -387,12 +387,6 @@ class JobCoordinator:
             logger.error(f"No task defined for stage: {stage}")
             return
         
-        # Get Celery task
-        task = celery_app.tasks.get(task_name)
-        if not task:
-            logger.error(f"Task not found: {task_name}")
-            return
-        
         # Calculate countdown for retry backoff
         countdown = self._calculate_backoff(retry_attempt)
         
@@ -402,8 +396,10 @@ class JobCoordinator:
         task_args = [job_id]
 
         try:
-            # Enqueue with backoff
-            task.apply_async(
+            # Publish by task name so the API producer does not depend on
+            # importing every worker task into its local Celery registry.
+            celery_app.send_task(
+                task_name,
                 args=task_args,
                 countdown=countdown,
                 task_id=f"{job_id}:{stage.value}:{retry_attempt}",

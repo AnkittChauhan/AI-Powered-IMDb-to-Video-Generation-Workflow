@@ -34,7 +34,7 @@ A production-grade system that converts IMDb movie URLs into 2-minute cinematic 
 ## 6-Stage Video Generation Pipeline
 
 1. **Metadata Extraction** - Scrape IMDb for movie data
-2. **Script Generation** - Use OpenAI to create 2-min narration
+2. **Script Generation** - Use OpenAI or OpenRouter to create 2-min narration
 3. **TTS & Subtitles** - Generate audio narration + SRT subtitles
 4. **Asset Gathering** - Download images, extract trailer frames
 5. **Video Composition** - FFmpeg orchestration (compose video)
@@ -45,7 +45,7 @@ A production-grade system that converts IMDb movie URLs into 2-minute cinematic 
 ### Prerequisites
 
 - Docker & Docker Compose
-- OpenAI API key
+- OpenAI API key, or an OpenRouter API key for script generation
 - Python 3.11+ (for local development)
 - Node.js 18+ (for frontend development)
 
@@ -58,7 +58,7 @@ cd Movie2Video\ AI
 
 # Create .env file
 cp backend/.env.example backend/.env
-# Edit backend/.env and add your OPENAI_API_KEY
+# Edit backend/.env and add either OPENAI_API_KEY or OPENROUTER_API_KEY
 
 # Start full stack
 docker-compose up
@@ -176,7 +176,10 @@ Movie2Video AI/
 See `backend/.env.example` for all available options.
 
 **Critical variables:**
-- `OPENAI_API_KEY` - Your OpenAI API key (required)
+- `LLM_PROVIDER` - `openai` or `openrouter` for script generation
+- `OPENAI_API_KEY` - Required when `LLM_PROVIDER=openai`; still used for OpenAI TTS
+- `OPENROUTER_API_KEY` - Required when `LLM_PROVIDER=openrouter`
+- `OPENROUTER_MODEL` - OpenRouter model ID for script generation
 - `DATABASE_URL` - Database connection string (defaults to SQLite)
 - `REDIS_URL` - Redis connection string
 

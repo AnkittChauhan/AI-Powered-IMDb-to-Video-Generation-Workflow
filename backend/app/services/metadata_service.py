@@ -147,8 +147,14 @@ class MetadataService:
         try:
             metadata = MetadataService._scrape_imdb(imdb_id)
             logger.info(f"[{imdb_id}] Successfully scraped: {metadata['title']}")
-        except (RetryableError, PermanentError):
-            raise
+        except PermanentError as e:
+            logger.warning(f"[{imdb_id}] IMDb page scrape failed, trying suggestion fallback: {str(e)}")
+            metadata = MetadataService._fetch_imdb_suggestion(imdb_id)
+            logger.info(f"[{imdb_id}] Successfully fetched fallback metadata: {metadata['title']}")
+        except RetryableError as e:
+            logger.warning(f"[{imdb_id}] IMDb page scrape retryable failure, trying suggestion fallback: {str(e)}")
+            metadata = MetadataService._fetch_imdb_suggestion(imdb_id)
+            logger.info(f"[{imdb_id}] Successfully fetched fallback metadata: {metadata['title']}")
         except Exception as e:
             logger.error(f"[{imdb_id}] Unexpected error: {str(e)}")
             raise RetryableError(f"Failed to fetch metadata: {str(e)}")
@@ -224,6 +230,63 @@ class MetadataService:
         
         logger.debug(f"[{imdb_id}] Extracted metadata: {metadata['title']}")
         return metadata
+
+    @staticmethod
+    def _fetch_imdb_suggestion(imdb_id: str) -> Dict[str, Any]:
+        """
+        Fetch lightweight metadata from IMDb's suggestion endpoint.
+
+        This is intentionally a fallback, not the primary source. The endpoint
+        does not provide plot, rating, or genres, but it is useful when IMDb's
+        title page serves a bot-protection/challenge response to server-side
+        HTML scrapers.
+        """
+        url = f"https://v3.sg.media-imdb.com/suggestion/t/{imdb_id}.json"
+
+        try:
+            response = requests.get(url, headers=HEADERS, timeout=10)
+
+            if response.status_code == 404:
+                raise PermanentError(f"IMDb suggestion data not found: {imdb_id}")
+
+            if response.status_code in (429, 503):
+                raise RetryableError(f"IMDb suggestion endpoint returned {response.status_code}")
+
+            if response.status_code >= 400:
+                raise PermanentError(
+                    f"IMDb suggestion endpoint returned {response.status_code}: {response.reason}"
+                )
+
+            payload = response.json()
+        except requests.Timeout:
+            raise RetryableError("IMDb suggestion request timed out (10s)")
+        except requests.ConnectionError as e:
+            raise RetryableError(f"Network error connecting to IMDb suggestion endpoint: {str(e)}")
+        except requests.RequestException as e:
+            raise RetryableError(f"IMDb suggestion request failed: {str(e)}")
+        except ValueError as e:
+            raise RetryableError(f"Invalid IMDb suggestion JSON: {str(e)}")
+
+        matches = payload.get("d", [])
+        movie = next((item for item in matches if item.get("id") == imdb_id), None)
+        if not movie:
+            raise PermanentError(f"Could not find IMDb suggestion metadata for {imdb_id}")
+
+        cast_text = movie.get("s") or ""
+        cast = [name.strip() for name in cast_text.split(",") if name.strip()]
+        poster = movie.get("i") or {}
+
+        return {
+            "imdb_id": imdb_id,
+            "title": movie.get("l"),
+            "plot": "Plot summary is not available from the lightweight IMDb fallback.",
+            "rating": None,
+            "release_year": movie.get("y"),
+            "runtime_minutes": None,
+            "genres": [],
+            "cast": cast[:10],
+            "poster_url": poster.get("imageUrl"),
+        }
     
     @staticmethod
     def _extract_title(soup: BeautifulSoup) -> Optional[str]:

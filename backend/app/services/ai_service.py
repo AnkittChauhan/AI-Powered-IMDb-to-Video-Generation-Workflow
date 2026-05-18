@@ -1,4 +1,4 @@
-"""AIService for narration script generation using OpenAI."""
+"""AIService for narration script generation using configurable LLM providers."""
 
 from __future__ import annotations
 
@@ -137,13 +137,17 @@ class AIService:
 
     @staticmethod
     def _call_openai(prompt: str) -> Tuple[str, Dict[str, int]]:
-        if not settings.OPENAI_API_KEY:
-            raise PermanentError("OPENAI_API_KEY is not configured")
+        provider = (settings.LLM_PROVIDER or "openai").lower()
+        api_key, model, base_url = AIService._resolve_llm_config(provider)
 
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        client_kwargs = {"api_key": api_key}
+        if base_url:
+            client_kwargs["base_url"] = base_url
+
+        client = OpenAI(**client_kwargs)
         try:
             response = client.chat.completions.create(
-                model=settings.OPENAI_MODEL or OPENAI_CHAT_MODEL,
+                model=model,
                 messages=[
                     {
                         "role": "system",
@@ -157,6 +161,8 @@ class AIService:
         except Exception as e:  # OpenAI SDK errors vary by version.
             status_code = getattr(e, "status_code", None)
             message = str(e)
+            if "insufficient_quota" in message:
+                raise PermanentError(f"OpenAI quota exhausted: {message}")
             if status_code in (400, 401, 403, 404):
                 raise PermanentError(f"OpenAI request failed: {message}")
             if status_code in (408, 409, 429, 500, 502, 503, 504):
@@ -176,8 +182,26 @@ class AIService:
             "completion_tokens": getattr(usage_obj, "completion_tokens", 0) or 0,
             "total_tokens": getattr(usage_obj, "total_tokens", 0) or 0,
         }
-        logger.info("OpenAI script generation complete", extra={"usage": usage})
+        logger.info("LLM script generation complete", extra={"provider": provider, "usage": usage})
         return content, usage
+
+    @staticmethod
+    def _resolve_llm_config(provider: str) -> Tuple[str, str, str | None]:
+        if provider == "openrouter":
+            if not settings.OPENROUTER_API_KEY:
+                raise PermanentError("OPENROUTER_API_KEY is not configured")
+            return (
+                settings.OPENROUTER_API_KEY,
+                settings.OPENROUTER_MODEL,
+                settings.OPENROUTER_BASE_URL,
+            )
+
+        if provider != "openai":
+            raise PermanentError(f"Unsupported LLM_PROVIDER: {provider}")
+
+        if not settings.OPENAI_API_KEY:
+            raise PermanentError("OPENAI_API_KEY is not configured")
+        return settings.OPENAI_API_KEY, settings.OPENAI_MODEL or OPENAI_CHAT_MODEL, None
 
 
 __all__ = ["AIService"]

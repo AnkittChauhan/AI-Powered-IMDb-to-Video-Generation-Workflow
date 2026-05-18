@@ -7,9 +7,10 @@ import re
 
 from openai import OpenAI
 
+from app.config import settings
 from app.core.error_handling import PermanentError, RetryableError
 from app.services.storage_service import StorageService
-from app.utils.constants import OPENAI_TTS_MODEL, OPENAI_TTS_VOICE, TTS_MAX_CHARACTERS
+from app.utils.constants import TTS_MAX_CHARACTERS
 
 
 class TTSService:
@@ -66,13 +67,15 @@ class TTSService:
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         try:
             response = client.audio.speech.create(
-                model=OPENAI_TTS_MODEL,
-                voice=OPENAI_TTS_VOICE,
+                model=settings.OPENAI_TTS_MODEL,
+                voice=settings.OPENAI_TTS_VOICE,
                 input=text,
             )
         except Exception as e:
             status_code = getattr(e, "status_code", None)
             message = str(e)
+            if "insufficient_quota" in message:
+                raise PermanentError(f"OpenAI TTS quota exhausted: {message}")
             if status_code in (400, 401, 403, 404):
                 raise PermanentError(f"TTS request failed: {message}")
             if status_code in (408, 409, 429, 500, 502, 503, 504):

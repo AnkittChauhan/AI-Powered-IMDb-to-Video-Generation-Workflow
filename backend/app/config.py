@@ -28,9 +28,17 @@ class Settings(BaseSettings):
     ADMIN_TOKEN: str = "secret-admin-token-change-in-prod"
     
     # OpenAI
+    LLM_PROVIDER: str = "openai"
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4-turbo-preview"
+    OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_MAX_TOKENS: int = 500
+    OPENAI_TTS_MODEL: str = "gpt-4o-mini-tts"
+    OPENAI_TTS_VOICE: str = "alloy"
+
+    # OpenRouter (OpenAI-compatible chat completions)
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "qwen/qwen3-coder:free"
     
     # File Storage
     STORAGE_TYPE: str = "local"  # local or s3

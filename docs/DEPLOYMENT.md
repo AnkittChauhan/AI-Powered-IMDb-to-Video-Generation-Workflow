@@ -34,7 +34,7 @@ The deployment shape should preserve that separation.
 
 ```bash
 cp .env.example .env
-# edit OPENAI_API_KEY
+# edit OPENAI_API_KEY, or set LLM_PROVIDER=openrouter and OPENROUTER_API_KEY
 docker compose up --build
 ```
 
@@ -109,7 +109,7 @@ For a small assignment, `/health` is enough. For production, split these because
 
 Initial cost risks:
 
-- OpenAI script generation and TTS calls
+- OpenAI/OpenRouter script generation and TTS calls
 - FFmpeg CPU time
 - repeated IMDb scraping
 - storing final media artifacts
@@ -144,7 +144,7 @@ Controls to add as the system grows:
 | DB outage | API should return degraded/unavailable |
 | Local disk fills | retention policy and storage monitoring |
 | FFmpeg failure | capture stderr, mark stage failed |
-| OpenAI rate limits | classify as retryable and back off |
+| OpenAI/OpenRouter rate limits | classify as retryable and back off |
 
 ## Production Readiness Checklist
 
