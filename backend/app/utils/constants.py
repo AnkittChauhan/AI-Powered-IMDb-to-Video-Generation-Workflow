@@ -125,7 +125,7 @@ CELERY_QUEUE_LOW_PRIORITY = "low"
 # Task routing (which tasks go to which queues)
 CELERY_TASK_ROUTING = {
     "app.tasks.metadata_tasks.extract_metadata_task": {"queue": "default"},
-    "app.tasks.ai_tasks.generate_script_task": {"queue": "high"},
+    "app.tasks.script_tasks.generate_script_task": {"queue": "high"},
     "app.tasks.tts_tasks.generate_tts_task": {"queue": "default"},
     "app.tasks.asset_tasks.gather_assets_task": {"queue": "default"},
     "app.tasks.video_tasks.compose_video_task": {"queue": "low"},  # CPU-intensive
