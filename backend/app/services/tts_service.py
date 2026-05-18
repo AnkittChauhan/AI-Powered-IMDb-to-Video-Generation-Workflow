@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Dict, List
 import re
 
 from openai import OpenAI
 
-from app.config import settings
 from app.core.error_handling import PermanentError, RetryableError
+from app.services.storage_service import StorageService
 from app.utils.constants import OPENAI_TTS_MODEL, OPENAI_TTS_VOICE, TTS_MAX_CHARACTERS
 
 
@@ -25,9 +24,7 @@ class TTSService:
             text = text[:TTS_MAX_CHARACTERS]
 
         audio_bytes = TTSService._call_openai_tts(text)
-        output_dir = Path(settings.LOCAL_STORAGE_PATH) / "audio"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        audio_path = output_dir / f"{job_id}_voiceover.mp3"
+        audio_path = StorageService.audio_path(job_id)
         audio_path.write_bytes(audio_bytes)
 
         subtitles = TTSService.generate_subtitles(text)

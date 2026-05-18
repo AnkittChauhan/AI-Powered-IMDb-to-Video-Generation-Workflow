@@ -2,10 +2,12 @@
 Job management API routes
 """
 from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from uuid import uuid4
 import logging
 from datetime import datetime
+from pathlib import Path
 
 from app.database.connection import get_db
 from app.models.job import Job
@@ -267,7 +269,7 @@ async def download_video(
     - 404 Not Found: Job or video not found
     - 500 Internal Server Error: Server error
     
-    Note: Currently returns metadata. Implementation TODO for streaming.
+    This endpoint only succeeds when both the job and final MP4 artifact exist.
     """
     
     try:
@@ -306,15 +308,24 @@ async def download_video(
                 }
             )
         
+        video_path = Path(job.output_video_path)
+        if not video_path.exists() or not video_path.is_file():
+            logger.error(f"Video file missing for completed job {job_id}: {job.output_video_path}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error_code": "video_file_missing",
+                    "message": "Video file is missing from storage",
+                },
+            )
+
         logger.info(f"Video download requested for job {job_id}")
-        
-        # TODO: Implement streaming from storage (local or S3)
-        # For now, return metadata
-        return {
-            "message": "Video download not yet implemented",
-            "video_path": job.output_video_path,
-            "display_name": job.display_name,
-        }
+        safe_name = (job.display_name or job_id).replace("/", "-").strip()
+        return FileResponse(
+            path=str(video_path),
+            media_type="video/mp4",
+            filename=f"{safe_name}.mp4",
+        )
     
     except HTTPException:
         raise

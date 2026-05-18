@@ -330,6 +330,33 @@ class TestJobRoutes:
         response = client.get(f"/api/jobs/{sample_job.id}/video")
         
         assert response.status_code == 400
+
+    def test_download_completed_job_returns_file(self, client, tmp_path):
+        """Test downloading video for completed job"""
+        from app.models.job import Job
+        from app.core.job_coordinator import JobStage
+
+        video_path = tmp_path / "final.mp4"
+        video_path.write_bytes(b"fake mp4")
+
+        db = TestingSessionLocal()
+        job = Job(
+            id="completed-download-job",
+            imdb_url="https://www.imdb.com/title/tt0111161/",
+            status=JobStage.COMPLETED.value,
+            created_at=datetime.utcnow(),
+            output_video_path=str(video_path),
+            display_name="Demo Movie",
+        )
+        db.add(job)
+        db.commit()
+        db.close()
+
+        response = client.get("/api/jobs/completed-download-job/video")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "video/mp4"
+        assert response.content == b"fake mp4"
     
     def test_health_check(self, client):
         """Test health check endpoint"""
