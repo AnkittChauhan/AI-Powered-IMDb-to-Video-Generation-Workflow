@@ -321,6 +321,9 @@ http://localhost:5555
 
 ## Production Deployment
 
+For the detailed deployment architecture, scaling strategy, storage migration path,
+and production readiness checklist, see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
 ### Pre-deployment Checklist
 - [ ] Set `OPENAI_API_KEY` environment variable
 - [ ] Switch to PostgreSQL database

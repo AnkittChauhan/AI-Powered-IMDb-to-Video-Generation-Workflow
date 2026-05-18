@@ -6,15 +6,15 @@ services:
     image: postgres:15-alpine
     container_name: imdb_video_postgres
     environment:
-      POSTGRES_DB: imdb_video
-      POSTGRES_USER: imdb_user
-      POSTGRES_PASSWORD: imdb_password
+      POSTGRES_DB: ${POSTGRES_DB:-imdb_video}
+      POSTGRES_USER: ${POSTGRES_USER:-imdb_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-imdb_password}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U imdb_user"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-imdb_user}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -52,11 +52,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://imdb_user:imdb_password@postgres:5432/imdb_video
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-imdb_user}:${POSTGRES_PASSWORD:-imdb_password}@postgres:5432/${POSTGRES_DB:-imdb_video}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LOCAL_STORAGE_PATH=/tmp/imdb_video_storage
       - LOG_LEVEL=INFO
     volumes:
       - ./backend:/app
@@ -79,11 +80,12 @@ services:
     container_name: imdb_video_celery_worker
     command: celery -A app.tasks.celery_app worker --loglevel=info
     environment:
-      - DATABASE_URL=postgresql://imdb_user:imdb_password@postgres:5432/imdb_video
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-imdb_user}:${POSTGRES_PASSWORD:-imdb_password}@postgres:5432/${POSTGRES_DB:-imdb_video}
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LOCAL_STORAGE_PATH=/tmp/imdb_video_storage
       - LOG_LEVEL=INFO
     volumes:
       - ./backend:/app
@@ -109,6 +111,7 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-imdb_user}:${POSTGRES_PASSWORD:-imdb_password}@postgres:5432/${POSTGRES_DB:-imdb_video}
     depends_on:
       - redis
       - celery_worker
@@ -126,7 +129,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     volumes:
       - ./frontend:/app
       - /app/node_modules
