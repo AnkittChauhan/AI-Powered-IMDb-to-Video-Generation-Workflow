@@ -23,12 +23,12 @@ A production-grade system that converts IMDb movie URLs into 2-minute cinematic 
     ┌──────────────┼──────────────┐
     │              │              │
     ▼              ▼              ▼
-┌─────────┐  ┌─────────┐  ┌─────────┐
-│ Celery  │  │ Redis   │  │PostgreSQL
-│Worker 1 │  │(Queue)  │  │(DB)
-│Worker 2 │  │         │  │
-│Worker 3 │  │         │  │
-└─────────┘  └─────────┘  └─────────┘
+┌─────────┐  ┌─────────┐  ┌────────-─┐
+│ Celery  │  │ Redis   │  │PostgreSQL|
+│Worker 1 │  │(Queue)  │  │(DB)      |
+│Worker 2 │  │         │  │          |
+│Worker 3 │  │         │  │          |
+└─────────┘  └─────────┘  └────────-─┘
 ```
 
 ## 6-Stage Video Generation Pipeline
