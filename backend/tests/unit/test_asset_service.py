@@ -54,3 +54,29 @@ class TestAssetService:
         )
         assert len(out["scene_backgrounds"]) == 2
         assert out["scene_backgrounds"][0].endswith(".svg")
+        assert out["visual_strategy"] == "generated_scene_cards"
+        assert len(set(out["scene_backgrounds"])) == 2
+        assert all(asset["source_type"] == "generated_scene_card" for asset in out["scene_assets"])
+
+    @patch("app.services.asset_service.settings")
+    @patch("app.services.asset_service.AssetService._download_image")
+    def test_gather_assets_uses_poster_as_reference_not_repeated_background(
+        self,
+        mock_download,
+        mock_settings,
+    ):
+        mock_settings.LOCAL_STORAGE_PATH = "/tmp/imdb_video_storage_test"
+        mock_download.return_value = "/tmp/poster.jpg"
+
+        out = AssetService.gather_assets(
+            {"poster_url": "https://example.com/poster.jpg", "trailer_url": None, "title": "Test Movie"},
+            ["first scene", "second scene"],
+            "job-assets-2",
+        )
+
+        assert out["poster_path"] == "/tmp/poster.jpg"
+        assert out["scene_backgrounds"] == [
+            "/tmp/imdb_video_storage_test/assets/placeholders/job-assets-2_scene_1.svg",
+            "/tmp/imdb_video_storage_test/assets/placeholders/job-assets-2_scene_2.svg",
+        ]
+        assert all(asset["reference_poster_path"] == "/tmp/poster.jpg" for asset in out["scene_assets"])

@@ -9,7 +9,14 @@ import subprocess
 
 from app.core.error_handling import FFmpegError, PermanentError
 from app.services.storage_service import StorageService
-from app.utils.constants import AUDIO_BITRATE, AUDIO_CODEC, VIDEO_BITRATE, VIDEO_CODEC, VIDEO_FPS, VIDEO_RESOLUTION
+from app.utils.constants import (
+    AUDIO_BITRATE,
+    AUDIO_CODEC,
+    VIDEO_BITRATE,
+    VIDEO_CODEC,
+    VIDEO_FILTER_RESOLUTION,
+    VIDEO_FPS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +39,8 @@ class ExportService:
                 "-i",
                 str(draft_path),
                 "-vf",
-                f"scale={VIDEO_RESOLUTION}:force_original_aspect_ratio=decrease,"
-                f"pad={VIDEO_RESOLUTION}:(ow-iw)/2:(oh-ih)/2,setsar=1",
+                f"scale={VIDEO_FILTER_RESOLUTION}:force_original_aspect_ratio=decrease,"
+                f"pad={VIDEO_FILTER_RESOLUTION}:(ow-iw)/2:(oh-ih)/2,setsar=1",
                 "-r",
                 str(VIDEO_FPS),
                 "-c:v",

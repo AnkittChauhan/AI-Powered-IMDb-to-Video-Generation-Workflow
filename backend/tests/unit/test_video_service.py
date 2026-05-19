@@ -38,6 +38,9 @@ def test_compose_video_writes_expected_artifacts(tmp_path, monkeypatch):
     assert Path(output["subtitles_path"]).exists()
     assert output["scene_count"] == 1
     assert len(commands) == 3
+    segment_filter = commands[0][commands[0].index("-vf") + 1]
+    assert "scale=1920:1080:force_original_aspect_ratio=increase" in segment_filter
+    assert "crop=1920:1080" in segment_filter
 
 
 def test_compose_video_requires_audio(tmp_path, monkeypatch):

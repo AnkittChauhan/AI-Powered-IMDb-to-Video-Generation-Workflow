@@ -11,7 +11,7 @@ import subprocess
 from app.core.error_handling import FFmpegError, PermanentError
 from app.services.storage_service import StorageService
 from app.services.subtitle_service import SubtitleService
-from app.utils.constants import VIDEO_FPS, VIDEO_RESOLUTION
+from app.utils.constants import VIDEO_FILTER_RESOLUTION, VIDEO_FPS
 
 logger = logging.getLogger(__name__)
 
@@ -116,8 +116,6 @@ class VideoService:
             raise PermanentError("Cannot compose video: duration must be greater than zero")
 
         for path in scene_backgrounds:
-            if Path(path).suffix.lower() == ".svg":
-                continue
             if not Path(path).exists():
                 raise PermanentError(f"Cannot compose video: background file missing: {path}")
 
@@ -129,24 +127,14 @@ class VideoService:
         duration_seconds: float,
         scene_number: int,
     ) -> None:
-        if Path(background_path).suffix.lower() == ".svg":
-            source_args = ["-f", "lavfi", "-i", f"color=c=0x101114:s={VIDEO_RESOLUTION}:r={VIDEO_FPS}"]
-            filter_args = [
-                "-vf",
-                (
-                    "drawtext=text='Scene "
-                    f"{scene_number}':fontcolor=white:fontsize=54:x=(w-text_w)/2:y=(h-text_h)/2"
-                ),
-            ]
-        else:
-            source_args = ["-loop", "1", "-i", background_path]
-            filter_args = [
-                "-vf",
-                (
-                    f"scale={VIDEO_RESOLUTION}:force_original_aspect_ratio=increase,"
-                    f"crop={VIDEO_RESOLUTION},format=yuv420p"
-                ),
-            ]
+        source_args = ["-loop", "1", "-i", background_path]
+        filter_args = [
+            "-vf",
+            (
+                f"scale={VIDEO_FILTER_RESOLUTION}:force_original_aspect_ratio=increase,"
+                f"crop={VIDEO_FILTER_RESOLUTION},format=yuv420p"
+            ),
+        ]
 
         VideoService._run_ffmpeg(
             [
