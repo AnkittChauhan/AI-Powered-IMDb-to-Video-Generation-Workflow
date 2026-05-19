@@ -14,7 +14,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-imdb_user}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-imdb_user} -d $${POSTGRES_DB:-imdb_video}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -93,7 +93,7 @@ services:
       - KOKORO_TTS_SPEED=${KOKORO_TTS_SPEED:-1.0}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-qwen/qwen3-coder:free}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openrouter/owl-alpha}
       - LOCAL_STORAGE_PATH=/tmp/imdb_video_storage
       - LOG_LEVEL=INFO
     volumes:
@@ -138,7 +138,7 @@ services:
       - KOKORO_TTS_SPEED=${KOKORO_TTS_SPEED:-1.0}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-qwen/qwen3-coder:free}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-openrouter/owl-alpha}
       - LOCAL_STORAGE_PATH=/tmp/imdb_video_storage
       - LOG_LEVEL=INFO
     volumes:

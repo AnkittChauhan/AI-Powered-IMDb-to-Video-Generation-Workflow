@@ -253,13 +253,14 @@ class InputValidator:
         Valid formats:
         - https://www.imdb.com/title/tt0111161/
         - https://www.imdb.com/title/tt0111161
+        - https://www.imdb.com/title/tt0111161/?ref_=fn_al_tt_1
         
         Raises:
             InvalidInputError if invalid
         """
         import re
         
-        pattern = r"https://www\.imdb\.com/title/(tt\d+)/?$"
+        pattern = r"https://www\.imdb\.com/title/(tt\d+)/?(?:\?.*)?$"
         if not re.match(pattern, url):
             raise InvalidInputError(
                 "imdb_url",

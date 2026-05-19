@@ -198,6 +198,7 @@ class TestErrorHandling:
         # Valid URLs
         assert InputValidator.validate_imdb_url("https://www.imdb.com/title/tt0111161/")
         assert InputValidator.validate_imdb_url("https://www.imdb.com/title/tt0111161")
+        assert InputValidator.validate_imdb_url("https://www.imdb.com/title/tt0111161/?ref_=fn_al_tt_1")
         
         # Invalid URLs
         with pytest.raises(InvalidInputError):
@@ -211,6 +212,9 @@ class TestErrorHandling:
         from app.core.error_handling import InputValidator
         
         imdb_id = InputValidator.extract_imdb_id("https://www.imdb.com/title/tt0111161/")
+        assert imdb_id == "tt0111161"
+
+        imdb_id = InputValidator.extract_imdb_id("https://www.imdb.com/title/tt0111161/?ref_=fn_al_tt_1")
         assert imdb_id == "tt0111161"
     
     def test_handle_failure_with_retry(self, coordinator, sample_job, db):
@@ -291,6 +295,15 @@ class TestJobRoutes:
         assert "job_id" in data
         assert data["status"] == "pending"
         assert "poll_url" in data
+
+    def test_submit_job_with_imdb_query_params(self, client):
+        """Test submitting an IMDb URL copied from search results."""
+        response = client.post(
+            "/api/jobs",
+            json={"imdb_url": "https://www.imdb.com/title/tt0111161/?ref_=fn_al_tt_1"}
+        )
+
+        assert response.status_code == 202
     
     def test_submit_invalid_url(self, client):
         """Test submitting invalid IMDb URL"""

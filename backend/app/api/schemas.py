@@ -18,7 +18,7 @@ class JobSubmitRequest(BaseModel):
     @classmethod
     def validate_imdb_url(cls, v: str) -> str:
         """Validate IMDb URL format"""
-        pattern = r"https://www\.imdb\.com/title/(tt\d+)/?$"
+        pattern = r"https://www\.imdb\.com/title/(tt\d+)/?(?:\?.*)?$"
         if not re.match(pattern, v):
             raise ValueError(
                 "Invalid IMDb URL format. Must be: https://www.imdb.com/title/tt<digits>/"

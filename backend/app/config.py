@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     # OpenRouter (OpenAI-compatible chat completions)
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-    OPENROUTER_MODEL: str = "qwen/qwen3-coder:free"
+    OPENROUTER_MODEL: str = "openrouter/owl-alpha"
     
     # File Storage
     STORAGE_TYPE: str = "local"  # local or s3
