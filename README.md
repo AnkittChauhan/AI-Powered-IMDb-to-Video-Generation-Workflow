@@ -20,15 +20,13 @@ A production-grade system that converts IMDb movie URLs into 2-minute cinematic 
 │  - Video download                               │
 └──────────────────┬──────────────────────────────┘
                    │
-    ┌──────────────┼──────────────┐
-    │              │              │
-    ▼              ▼              ▼
-┌─────────┐  ┌─────────┐  ┌────────-─┐
-│ Celery  │  │ Redis   │  │PostgreSQL|
-│Worker 1 │  │(Queue)  │  │(DB)      |
-│Worker 2 │  │         │  │          |
-│Worker 3 │  │         │  │          |
-└─────────┘  └─────────┘  └────────-─┘
+    ┌──────────────┼──────────────┬──────────────┐
+    │              │              │              │
+    ▼              ▼              ▼              ▼
+┌─────────┐  ┌─────────┐  ┌──────────┐  ┌────────────┐
+│ Celery  │  │ Redis   │  │PostgreSQL│  │ Kokoro TTS │
+│ Worker  │  │ Queue   │  │ Database │  │ Local API  │
+└─────────┘  └─────────┘  └──────────┘  └────────────┘
 ```
 
 ## 6-Stage Video Generation Pipeline
@@ -36,7 +34,7 @@ A production-grade system that converts IMDb movie URLs into 2-minute cinematic 
 1. **Metadata Extraction** - Scrape IMDb for movie data
 2. **Script Generation** - Use OpenAI or OpenRouter to create 2-min narration
 3. **TTS & Subtitles** - Generate audio narration + SRT subtitles
-4. **Asset Gathering** - Download images, extract trailer frames
+4. **Asset Gathering** - Download poster images or generate placeholders
 5. **Video Composition** - FFmpeg orchestration (compose video)
 6. **Export** - Optimize & export final MP4
 
@@ -54,16 +52,16 @@ A production-grade system that converts IMDb movie URLs into 2-minute cinematic 
 
 ```bash
 # Clone repository
-git clone <repo-url>
+git clone https://github.com/AnkittChauhan/AI-Powered-IMDb-to-Video-Generation-Workflow.git
 cd Movie2Video\ AI
 
 # Create .env file
-cp backend/.env.example backend/.env
-# Edit backend/.env and add either OPENAI_API_KEY or OPENROUTER_API_KEY.
+cp .env.example .env
+# Edit .env and add either OPENAI_API_KEY or OPENROUTER_API_KEY.
 # TTS_PROVIDER=kokoro uses the local Docker TTS service.
 
 # Start full stack
-docker-compose up
+docker compose up --build
 
 # Services will be available at:
 # - API: http://localhost:8000
@@ -113,7 +111,7 @@ Response:
 {
   "job_id": "uuid-here",
   "status": "pending",
-  "created_at": "2026-05-13T10:00:00",
+  "created_at": "2026-05-19T10:00:00",
   "poll_url": "/api/jobs/uuid-here"
 }
 ```
@@ -125,10 +123,14 @@ Response:
 ```json
 {
   "job_id": "uuid",
-  "status": "processing_2",
+  "status": "script_generation",
+  "overall_progress": 30,
+  "current_stage": "script_generation",
   "progress": {
     "current_stage": "script_generation",
-    "overall_progress": 30
+    "overall_progress": 30,
+    "elapsed_seconds": 90,
+    "estimated_remaining_seconds": 210
   },
   "created_at": "...",
   "error": null
@@ -176,11 +178,12 @@ Movie2Video AI/
 
 ### Environment Variables
 
-See `backend/.env.example` for all available options.
+See `.env.example` for the Docker Compose configuration. `backend/.env.example`
+is useful only when running the backend outside Docker.
 
 **Critical variables:**
 - `LLM_PROVIDER` - `openai` or `openrouter` for script generation
-- `OPENAI_API_KEY` - Required when `LLM_PROVIDER=openai`; still used for OpenAI TTS
+- `OPENAI_API_KEY` - Required when `LLM_PROVIDER=openai` or when `TTS_PROVIDER=openai`
 - `OPENROUTER_API_KEY` - Required when `LLM_PROVIDER=openrouter`
 - `OPENROUTER_MODEL` - OpenRouter model ID for script generation
 - `TTS_PROVIDER` - `kokoro` for local Docker TTS or `openai` for hosted TTS
@@ -191,10 +194,12 @@ See `backend/.env.example` for all available options.
 
 ### Database
 
-**Development:** SQLite (file-based, included in repo)
-**Production:** PostgreSQL (configure via `DATABASE_URL`)
+**Docker Compose:** PostgreSQL
+**Local backend-only fallback:** SQLite, if you run the backend outside Docker
+**Production:** PostgreSQL or a managed PostgreSQL service
 
-Migrations are handled automatically on startup via SQLAlchemy.
+Tables are created on startup via SQLAlchemy for this assignment-stage build.
+For production, replace that with Alembic migrations.
 
 ## Development Guide
 
@@ -251,9 +256,9 @@ docker logs imdb_video_postgres
 ## Performance & Cost
 
 ### Cost Optimization
-- IMDb metadata cached 30 days (80% cache hit rate)
-- OpenAI tokens budgeted per job
-- Selective AI image generation
+- IMDb metadata cached for 30 days
+- Script generation can use OpenAI or OpenRouter
+- Local Kokoro TTS avoids per-request hosted TTS charges
 - H.264 video codec (good quality, small size)
 
 ### Typical Job Duration
@@ -266,9 +271,9 @@ docker logs imdb_video_postgres
 - **Total: 1-3 minutes**
 
 ### Typical Costs
-- OpenAI API: $0.10-0.20 per job
-- Storage: $0.01 per job
-- **Total: ~$0.15 per job**
+- Script generation: depends on selected OpenAI/OpenRouter model
+- TTS: local CPU cost when `TTS_PROVIDER=kokoro`
+- Storage: local disk in Docker Compose; future S3 migration would add object storage cost
 
 ## Scaling Strategy
 
@@ -290,13 +295,11 @@ docker logs imdb_video_postgres
 
 ```bash
 # Unit tests
-pytest backend/tests/unit
-
-# Integration tests
-pytest backend/tests/integration
+cd backend
+pytest tests/unit
 
 # Coverage
-pytest --cov=app backend/tests
+pytest --cov=app tests
 ```
 
 ## Troubleshooting
@@ -315,8 +318,8 @@ redis-cli -h localhost ping
 # Check PostgreSQL is running
 docker logs imdb_video_postgres
 
-# Reset database
-rm imdb_video.db  # if using SQLite
+# Reset Docker PostgreSQL data
+docker compose down -v
 ```
 
 ### Celery worker not picking up tasks
@@ -334,8 +337,9 @@ For the detailed deployment architecture, scaling strategy, storage migration pa
 and production readiness checklist, see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ### Pre-deployment Checklist
-- [ ] Set `OPENAI_API_KEY` environment variable
-- [ ] Switch to PostgreSQL database
+- [ ] Set either `OPENAI_API_KEY` or `OPENROUTER_API_KEY`
+- [ ] Confirm `TTS_PROVIDER` choice: local Kokoro or hosted TTS
+- [ ] Use PostgreSQL database
 - [ ] Use Redis Cluster/Sentinel
 - [ ] Add SSL certificates
 - [ ] Configure backup strategy
@@ -344,8 +348,8 @@ and production readiness checklist, see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.m
 
 ### Docker Production Build
 ```bash
-# Use docker-compose for production-like environment
-docker-compose -f docker-compose.yml up
+# Use Docker Compose for a production-like environment
+docker compose -f docker-compose.yml up --build
 
 # Or deploy to Kubernetes/ECS/etc.
 ```
