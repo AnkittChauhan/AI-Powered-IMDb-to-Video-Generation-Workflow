@@ -34,7 +34,7 @@ A production-grade system that converts IMDb movie URLs into 2-minute cinematic 
 1. **Metadata Extraction** - Scrape IMDb for movie data
 2. **Script Generation** - Use OpenAI or OpenRouter to create 2-min narration
 3. **TTS & Subtitles** - Generate audio narration + SRT subtitles
-4. **Asset Gathering** - Download poster images or generate placeholders
+4. **Asset Gathering** - Download poster references and generate scene visuals
 5. **Video Composition** - FFmpeg orchestration (compose video)
 6. **Export** - Optimize & export final MP4
 
@@ -71,6 +71,37 @@ docker compose up --build
 # - Celery Flower (monitoring): http://localhost:5555
 # - Database: localhost:5432
 ```
+
+### Optional External AI Scene Images
+
+By default, the app generates free local SVG storyboard cards for each scene.
+For richer visuals, you can point the backend at a separately running ComfyUI
+or cloud image-generation endpoint. This project does not run a ComfyUI
+container because local GPU support is machine-specific and easy to misconfigure.
+
+Add this to `.env`:
+
+```env
+VISUAL_PROVIDER=ai_image
+AI_IMAGE_PROVIDER=local_comfyui
+AI_IMAGE_SIZE=1024x1024
+COMFYUI_BASE_URL=http://host.docker.internal:8188
+COMFYUI_CHECKPOINT=sd_xl_base_1.0.safetensors
+```
+
+Then restart the app services so the worker picks up the env change:
+
+```bash
+docker compose restart backend celery_worker
+```
+
+The ComfyUI checkpoint filename must match `COMFYUI_CHECKPOINT`, and that
+checkpoint must be available inside whichever ComfyUI instance you run.
+
+If ComfyUI is unavailable, slow, or returns an error, the job falls back to
+local scene-card visuals so the video pipeline can still complete. That is
+intentional: image generation is valuable, but it should not make the whole
+workflow brittle.
 
 ### Local Development
 
@@ -158,6 +189,7 @@ Movie2Video AI/
 │   │   ├── database/
 │   │   ├── models/
 │   │   ├── services/
+│   │   │   └── visual_providers/
 │   │   ├── tasks/
 │   │   ├── main.py
 │   │   └── config.py
@@ -189,6 +221,11 @@ is useful only when running the backend outside Docker.
 - `TTS_PROVIDER` - `kokoro` for local Docker TTS or `openai` for hosted TTS
 - `KOKORO_TTS_BASE_URL` - Internal Kokoro speech API URL, defaults to `http://kokoro_tts:8880/v1`
 - `KOKORO_TTS_VOICE` - Kokoro voice ID, defaults to `af_sky`
+- `VISUAL_PROVIDER` - `scene_card` for free local visuals, or `ai_image`
+- `AI_IMAGE_PROVIDER` - `local_comfyui` for an external/native ComfyUI endpoint
+- `AI_IMAGE_SIZE` - Generated image size, for example `1024x1024`
+- `COMFYUI_BASE_URL` - ComfyUI API URL, for example `http://host.docker.internal:8188` from Docker Compose
+- `COMFYUI_CHECKPOINT` - Stable Diffusion checkpoint filename loaded by ComfyUI
 - `DATABASE_URL` - Database connection string (defaults to SQLite)
 - `REDIS_URL` - Redis connection string
 
@@ -259,6 +296,7 @@ docker logs imdb_video_postgres
 - IMDb metadata cached for 30 days
 - Script generation can use OpenAI or OpenRouter
 - Local Kokoro TTS avoids per-request hosted TTS charges
+- Local scene cards are free; external AI image providers depend on their own compute/cost model
 - H.264 video codec (good quality, small size)
 
 ### Typical Job Duration
@@ -273,6 +311,7 @@ docker logs imdb_video_postgres
 ### Typical Costs
 - Script generation: depends on selected OpenAI/OpenRouter model
 - TTS: local CPU cost when `TTS_PROVIDER=kokoro`
+- Scene visuals: free local SVG cards by default; external image providers may add compute/API cost
 - Storage: local disk in Docker Compose; future S3 migration would add object storage cost
 
 ## Scaling Strategy
@@ -331,6 +370,23 @@ docker restart imdb_video_celery_worker
 http://localhost:5555
 ```
 
+### External image generation not working
+
+```bash
+# Confirm the backend worker picked up the visual provider env vars
+docker compose restart celery_worker backend
+```
+
+Common causes:
+- `VISUAL_PROVIDER` is still `scene_card`
+- `COMFYUI_BASE_URL` does not point to a reachable ComfyUI endpoint
+- checkpoint filename does not match `COMFYUI_CHECKPOINT`
+- checkpoint is not available in the external/native ComfyUI instance
+- image generation is too slow for your timeout
+
+When this happens, the pipeline should fall back to scene cards instead of
+failing the full video job.
+
 ## Production Deployment
 
 For the detailed deployment architecture, scaling strategy, storage migration path,
@@ -339,6 +395,8 @@ and production readiness checklist, see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.m
 ### Pre-deployment Checklist
 - [ ] Set either `OPENAI_API_KEY` or `OPENROUTER_API_KEY`
 - [ ] Confirm `TTS_PROVIDER` choice: local Kokoro or hosted TTS
+- [ ] Confirm `VISUAL_PROVIDER` choice: local scene cards or external image generation
+- [ ] If using external image generation, pin/check the model endpoint and test generation latency
 - [ ] Use PostgreSQL database
 - [ ] Use Redis Cluster/Sentinel
 - [ ] Add SSL certificates

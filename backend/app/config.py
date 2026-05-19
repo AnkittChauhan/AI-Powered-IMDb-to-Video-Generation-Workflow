@@ -51,6 +51,27 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     OPENROUTER_MODEL: str = "openrouter/owl-alpha"
+
+    # Scene visual generation. "scene_card" is the free local default; "ai_image"
+    # can route to an external/native image provider endpoint.
+    VISUAL_PROVIDER: str = "scene_card"
+    AI_IMAGE_PROVIDER: str = "local_comfyui"
+    AI_IMAGE_MODEL: str = "stable-diffusion"
+    AI_IMAGE_SIZE: str = "1024x1024"
+
+    # Optional external/native ComfyUI Stable Diffusion provider.
+    # Docker Compose does not run ComfyUI; point this at a healthy endpoint.
+    COMFYUI_BASE_URL: str = "http://localhost:8188"
+    COMFYUI_CHECKPOINT: str = "sd_xl_base_1.0.safetensors"
+    COMFYUI_TIMEOUT_SECONDS: int = 900
+    COMFYUI_STEPS: int = 24
+    COMFYUI_CFG: float = 7.0
+    COMFYUI_SAMPLER: str = "euler"
+    COMFYUI_SCHEDULER: str = "normal"
+    COMFYUI_NEGATIVE_PROMPT: str = (
+        "text, captions, subtitles, watermark, logo, real actor likeness, distorted face, "
+        "extra fingers, low quality, blurry"
+    )
     
     # File Storage
     STORAGE_TYPE: str = "local"  # local or s3
