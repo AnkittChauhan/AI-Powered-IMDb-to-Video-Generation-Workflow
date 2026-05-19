@@ -35,6 +35,18 @@ class Settings(BaseSettings):
     OPENAI_TTS_MODEL: str = "gpt-4o-mini-tts"
     OPENAI_TTS_VOICE: str = "alloy"
 
+    # TTS provider. Uses "kokoro" for local Docker TTS or "openai" for hosted TTS.
+    TTS_PROVIDER: str = "kokoro"
+    TTS_MAX_CHARACTERS: int = 2000
+
+    # Kokoro FastAPI (OpenAI-compatible local speech endpoint)
+    KOKORO_TTS_BASE_URL: str = "http://kokoro_tts:8880/v1"
+    KOKORO_TTS_API_KEY: str = "not-needed"
+    KOKORO_TTS_MODEL: str = "kokoro"
+    KOKORO_TTS_VOICE: str = "af_sky"
+    KOKORO_TTS_FORMAT: str = "mp3"
+    KOKORO_TTS_SPEED: float = 1.0
+
     # OpenRouter (OpenAI-compatible chat completions)
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
@@ -58,7 +70,7 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
 
 settings = Settings()

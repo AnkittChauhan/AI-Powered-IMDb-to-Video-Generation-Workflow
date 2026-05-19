@@ -18,7 +18,7 @@ class TestTTSService:
         assert subtitles[0]["index"] == 1
         assert subtitles[1]["start"] >= subtitles[0]["end"]
 
-    @patch("app.services.tts_service.TTSService._call_openai_tts")
+    @patch("app.services.tts_service.TTSService._call_tts")
     def test_generate_voiceover_success(self, mock_call, tmp_path, monkeypatch):
         monkeypatch.setattr(settings, "LOCAL_STORAGE_PATH", str(tmp_path))
         mock_call.return_value = b"fake-audio"

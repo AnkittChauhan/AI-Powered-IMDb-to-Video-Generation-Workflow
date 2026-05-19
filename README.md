@@ -46,6 +46,7 @@ A production-grade system that converts IMDb movie URLs into 2-minute cinematic 
 
 - Docker & Docker Compose
 - OpenAI API key, or an OpenRouter API key for script generation
+- Kokoro TTS runs locally through Docker by default
 - Python 3.11+ (for local development)
 - Node.js 18+ (for frontend development)
 
@@ -58,7 +59,8 @@ cd Movie2Video\ AI
 
 # Create .env file
 cp backend/.env.example backend/.env
-# Edit backend/.env and add either OPENAI_API_KEY or OPENROUTER_API_KEY
+# Edit backend/.env and add either OPENAI_API_KEY or OPENROUTER_API_KEY.
+# TTS_PROVIDER=kokoro uses the local Docker TTS service.
 
 # Start full stack
 docker-compose up
@@ -67,6 +69,7 @@ docker-compose up
 # - API: http://localhost:8000
 # - API Docs: http://localhost:8000/docs
 # - Frontend: http://localhost:3000
+# - Kokoro TTS API: http://localhost:8880/docs
 # - Celery Flower (monitoring): http://localhost:5555
 # - Database: localhost:5432
 ```
@@ -180,6 +183,9 @@ See `backend/.env.example` for all available options.
 - `OPENAI_API_KEY` - Required when `LLM_PROVIDER=openai`; still used for OpenAI TTS
 - `OPENROUTER_API_KEY` - Required when `LLM_PROVIDER=openrouter`
 - `OPENROUTER_MODEL` - OpenRouter model ID for script generation
+- `TTS_PROVIDER` - `kokoro` for local Docker TTS or `openai` for hosted TTS
+- `KOKORO_TTS_BASE_URL` - Internal Kokoro speech API URL, defaults to `http://kokoro_tts:8880/v1`
+- `KOKORO_TTS_VOICE` - Kokoro voice ID, defaults to `af_sky`
 - `DATABASE_URL` - Database connection string (defaults to SQLite)
 - `REDIS_URL` - Redis connection string
 

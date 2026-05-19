@@ -35,6 +35,7 @@ The deployment shape should preserve that separation.
 ```bash
 cp .env.example .env
 # edit OPENAI_API_KEY, or set LLM_PROVIDER=openrouter and OPENROUTER_API_KEY
+# TTS_PROVIDER=kokoro uses the local Kokoro Docker service
 docker compose up --build
 ```
 
@@ -43,6 +44,7 @@ Services:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
 - API docs: http://localhost:8000/docs
+- Kokoro TTS API: http://localhost:8880/docs
 - Flower: http://localhost:5555
 
 ## Production Shape
@@ -109,7 +111,8 @@ For a small assignment, `/health` is enough. For production, split these because
 
 Initial cost risks:
 
-- OpenAI/OpenRouter script generation and TTS calls
+- OpenAI/OpenRouter script generation
+- local Kokoro TTS CPU time
 - FFmpeg CPU time
 - repeated IMDb scraping
 - storing final media artifacts

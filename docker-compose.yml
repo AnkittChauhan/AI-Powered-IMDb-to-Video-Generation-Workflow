@@ -41,6 +41,28 @@ services:
       - imdb_network
 
   # ============================================
+  # Local TTS (Kokoro FastAPI)
+  # ============================================
+  kokoro_tts:
+    image: ${KOKORO_IMAGE:-ghcr.io/remsky/kokoro-fastapi-cpu:v0.3.0}
+    container_name: imdb_video_kokoro_tts
+    ports:
+      - "8880:8880"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8880
+      - API_LOG_LEVEL=${KOKORO_API_LOG_LEVEL:-INFO}
+      - DEFAULT_VOICE=${KOKORO_TTS_VOICE:-af_sky}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8880/health', timeout=3).read()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - imdb_network
+
+  # ============================================
   # FastAPI Backend
   # ============================================
   backend:
@@ -61,6 +83,14 @@ services:
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
       - OPENAI_TTS_MODEL=${OPENAI_TTS_MODEL:-gpt-4o-mini-tts}
       - OPENAI_TTS_VOICE=${OPENAI_TTS_VOICE:-alloy}
+      - TTS_PROVIDER=${TTS_PROVIDER:-kokoro}
+      - TTS_MAX_CHARACTERS=${TTS_MAX_CHARACTERS:-2000}
+      - KOKORO_TTS_BASE_URL=${KOKORO_TTS_BASE_URL:-http://kokoro_tts:8880/v1}
+      - KOKORO_TTS_API_KEY=${KOKORO_TTS_API_KEY:-not-needed}
+      - KOKORO_TTS_MODEL=${KOKORO_TTS_MODEL:-kokoro}
+      - KOKORO_TTS_VOICE=${KOKORO_TTS_VOICE:-af_sky}
+      - KOKORO_TTS_FORMAT=${KOKORO_TTS_FORMAT:-mp3}
+      - KOKORO_TTS_SPEED=${KOKORO_TTS_SPEED:-1.0}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-qwen/qwen3-coder:free}
@@ -73,6 +103,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      kokoro_tts:
         condition: service_healthy
     networks:
       - imdb_network
@@ -96,6 +128,14 @@ services:
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
       - OPENAI_TTS_MODEL=${OPENAI_TTS_MODEL:-gpt-4o-mini-tts}
       - OPENAI_TTS_VOICE=${OPENAI_TTS_VOICE:-alloy}
+      - TTS_PROVIDER=${TTS_PROVIDER:-kokoro}
+      - TTS_MAX_CHARACTERS=${TTS_MAX_CHARACTERS:-2000}
+      - KOKORO_TTS_BASE_URL=${KOKORO_TTS_BASE_URL:-http://kokoro_tts:8880/v1}
+      - KOKORO_TTS_API_KEY=${KOKORO_TTS_API_KEY:-not-needed}
+      - KOKORO_TTS_MODEL=${KOKORO_TTS_MODEL:-kokoro}
+      - KOKORO_TTS_VOICE=${KOKORO_TTS_VOICE:-af_sky}
+      - KOKORO_TTS_FORMAT=${KOKORO_TTS_FORMAT:-mp3}
+      - KOKORO_TTS_SPEED=${KOKORO_TTS_SPEED:-1.0}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       - OPENROUTER_MODEL=${OPENROUTER_MODEL:-qwen/qwen3-coder:free}
@@ -107,6 +147,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - kokoro_tts
       - backend
     networks:
       - imdb_network
