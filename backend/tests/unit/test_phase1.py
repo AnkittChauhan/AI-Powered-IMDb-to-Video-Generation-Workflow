@@ -108,9 +108,12 @@ class TestJobCoordinator:
         """Test transitioning to next stage"""
         from app.core.job_coordinator import JobStage
         from app.models.job import Job
-        
-        success = coordinator.transition_to_next_stage(sample_job.id)
+
+        with patch.object(coordinator, "_enqueue_task") as enqueue_task:
+            success = coordinator.transition_to_next_stage(sample_job.id)
+
         assert success is True
+        enqueue_task.assert_called_once()
         
         # Verify job was updated
         job = db.query(Job).filter(Job.id == sample_job.id).first()
@@ -285,10 +288,11 @@ class TestJobRoutes:
     
     def test_submit_valid_job(self, client):
         """Test submitting a valid job"""
-        response = client.post(
-            "/api/jobs",
-            json={"imdb_url": "https://www.imdb.com/title/tt0111161/"}
-        )
+        with patch("app.core.job_coordinator.JobCoordinator._enqueue_task"):
+            response = client.post(
+                "/api/jobs",
+                json={"imdb_url": "https://www.imdb.com/title/tt0111161/"}
+            )
         
         assert response.status_code == 202
         data = response.json()
@@ -298,12 +302,27 @@ class TestJobRoutes:
 
     def test_submit_job_with_imdb_query_params(self, client):
         """Test submitting an IMDb URL copied from search results."""
-        response = client.post(
-            "/api/jobs",
-            json={"imdb_url": "https://www.imdb.com/title/tt0111161/?ref_=fn_al_tt_1"}
-        )
+        with patch("app.core.job_coordinator.JobCoordinator._enqueue_task"):
+            response = client.post(
+                "/api/jobs",
+                json={"imdb_url": "https://www.imdb.com/title/tt0111161/?ref_=fn_al_tt_1"}
+            )
 
         assert response.status_code == 202
+
+    def test_submit_job_returns_503_when_queue_unavailable(self, client):
+        """Test queue publish failures are surfaced instead of leaving stuck jobs."""
+        with patch(
+            "app.core.job_coordinator.JobCoordinator._enqueue_task",
+            side_effect=RuntimeError("redis unavailable"),
+        ):
+            response = client.post(
+                "/api/jobs",
+                json={"imdb_url": "https://www.imdb.com/title/tt0111161/"}
+            )
+
+        assert response.status_code == 503
+        assert response.json()["detail"]["error_code"] == "queue_unavailable"
     
     def test_submit_invalid_url(self, client):
         """Test submitting invalid IMDb URL"""
@@ -406,7 +425,8 @@ class TestJobWorkflow:
         assert progress["overall_progress"] == 0
         
         # Transition to next stage
-        coordinator.transition_to_next_stage(job.id)
+        with patch.object(coordinator, "_enqueue_task"):
+            coordinator.transition_to_next_stage(job.id)
         
         # Get progress again (should be 10%)
         progress = coordinator.get_job_progress(job.id)

@@ -166,6 +166,9 @@ class JobCoordinator:
         # Update job status
         job.status = next_stage.value
         job.updated_at = datetime.utcnow()
+        if current_stage == JobStage.PENDING and job.started_at is None:
+            job.started_at = datetime.utcnow()
+            logger.info(f"Job started: {job_id}")
         
         # Special handling for stage transitions
         if next_stage == JobStage.EXPORT:
@@ -176,7 +179,15 @@ class JobCoordinator:
         
         # Enqueue next task if not completed
         if next_stage != JobStage.COMPLETED:
-            self._enqueue_task(job_id, next_stage)
+            try:
+                self._enqueue_task(job_id, next_stage)
+            except Exception:
+                job.status = current_stage.value
+                if current_stage == JobStage.PENDING:
+                    job.started_at = None
+                job.updated_at = datetime.utcnow()
+                self.db.commit()
+                raise
         else:
             logger.info(f"Job {job_id} completed successfully")
             job.completed_at = datetime.utcnow()
@@ -395,19 +406,14 @@ class JobCoordinator:
         # Metadata task requires job_id only; task reads imdb_url from database.
         task_args = [job_id]
 
-        try:
-            # Publish by task name so the API producer does not depend on
-            # importing every worker task into its local Celery registry.
-            celery_app.send_task(
-                task_name,
-                args=task_args,
-                countdown=countdown,
-                task_id=f"{job_id}:{stage.value}:{retry_attempt}",
-            )
-        except Exception as e:
-            logger.error(
-                f"Failed to enqueue task {task_name} for job {job_id}: {str(e)}"
-            )
+        # Publish by task name so the API producer does not depend on
+        # importing every worker task into its local Celery registry.
+        celery_app.send_task(
+            task_name,
+            args=task_args,
+            countdown=countdown,
+            task_id=f"{job_id}:{stage.value}:{retry_attempt}",
+        )
     
     def _calculate_backoff(self, retry_attempt: int) -> int:
         """

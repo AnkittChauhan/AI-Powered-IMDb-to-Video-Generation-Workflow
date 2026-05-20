@@ -52,3 +52,33 @@ async def health_check(db: Session = Depends(get_db)):
         "status": overall_status,
         "services": services,
     }
+
+
+@router.get("/health/workers")
+async def worker_health_check():
+    """
+    Check whether at least one Celery worker is responding through the broker.
+
+    This is intentionally separate from /health so the API can stay live while
+    deployments and monitors can still detect a missing worker service.
+    """
+    try:
+        from app.tasks.celery_app import celery_app
+
+        replies = celery_app.control.inspect(timeout=1.0).ping() or {}
+        if replies:
+            return {
+                "status": "healthy",
+                "workers": sorted(replies.keys()),
+            }
+        return {
+            "status": "degraded",
+            "workers": [],
+            "message": "No Celery workers responded",
+        }
+    except Exception as e:
+        return {
+            "status": "degraded",
+            "workers": [],
+            "message": str(e),
+        }

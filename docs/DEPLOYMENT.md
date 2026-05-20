@@ -58,6 +58,29 @@ Recommended first production deployment:
 - Redis: managed Redis.
 - Storage: S3/GCS/Azure Blob instead of local disk.
 
+## Render Deployment
+
+Render needs at least these separate services:
+
+- Web service: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- Worker service: `celery -A app.tasks.celery_app:celery_app worker --loglevel=info`
+- Managed PostgreSQL
+- Managed Redis
+
+Set the same `DATABASE_URL`, `REDIS_URL`, `CELERY_BROKER_URL`, and
+`CELERY_RESULT_BACKEND` on both the web service and the worker service. The
+Celery variables should point at Render Redis, not `redis://localhost:6379/0`.
+
+After deploy:
+
+```bash
+curl https://<backend-host>/health
+curl https://<backend-host>/health/workers
+```
+
+If `/health` is healthy but `/health/workers` is degraded, the API can reach
+Redis but no worker is consuming jobs.
+
 Local disk is acceptable for the assignment and local dev. It is not enough for multi-worker production because workers may run on different machines and need shared artifact access.
 
 ## Scaling Strategy
@@ -69,8 +92,8 @@ API pressure usually comes from polling and job creation. Worker pressure comes 
 Suggested worker split as volume grows:
 
 ```bash
-celery -A app.tasks.celery_app worker -Q metadata,script,tts,assets --loglevel=info --concurrency=4
-celery -A app.tasks.celery_app worker -Q video,export --loglevel=info --concurrency=1
+celery -A app.tasks.celery_app:celery_app worker -Q metadata,script,tts,assets --loglevel=info --concurrency=4
+celery -A app.tasks.celery_app:celery_app worker -Q video,export --loglevel=info --concurrency=1
 ```
 
 Why separate media workers?
@@ -99,6 +122,11 @@ Do not scatter storage paths across services. That is how S3 migrations become r
 - database connectivity
 - Redis/Celery broker connectivity
 - local storage path creation
+
+`GET /health/workers` checks that at least one Celery worker responds through
+the broker. On Render, this should return a worker name after the separate
+worker service is running. If `/health` is healthy but `/health/workers` is
+degraded, the API can enqueue/read jobs but nothing is consuming the queue.
 
 Production should expose:
 

@@ -116,7 +116,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 
 # Run Celery worker (in another terminal)
-celery -A app.tasks.celery_app worker --loglevel=info
+celery -A app.tasks.celery_app:celery_app worker --loglevel=info
 ```
 
 **Frontend:**
@@ -173,6 +173,9 @@ Download completed video (when status is "completed").
 
 ### GET /health
 Health check endpoint.
+
+### GET /health/workers
+Check whether at least one Celery worker is responding through Redis.
 
 ## Project Structure
 
@@ -365,6 +368,9 @@ docker compose down -v
 ```bash
 # Restart worker
 docker restart imdb_video_celery_worker
+
+# Confirm a worker is responding through the broker
+curl http://localhost:8000/health/workers
 
 # Check Flower for task queue depth
 http://localhost:5555

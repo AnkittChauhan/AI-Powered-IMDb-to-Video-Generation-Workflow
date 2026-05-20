@@ -2,7 +2,7 @@
 Celery Worker Entry Point
 
 This is the entry point for running Celery workers. Use:
-    celery -A worker worker --loglevel=info
+    celery -A app.tasks.celery_app:celery_app worker --loglevel=info
 """
 import logging
 from app.tasks.celery_app import celery_app

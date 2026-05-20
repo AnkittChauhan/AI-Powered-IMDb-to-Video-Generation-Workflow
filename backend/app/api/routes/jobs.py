@@ -119,9 +119,19 @@ async def submit_job(
         coordinator.transition_to_next_stage(job_id)
         logger.info(f"Job {job_id} enqueued for processing")
     except Exception as e:
-        # Job was created but task queueing failed - still OK to return
         logger.error(f"Failed to enqueue task for job {job_id}: {str(e)}")
-        # Don't fail the request - job is created and will eventually be processed
+        job.status = JobStage.FAILED.value
+        job.failure_stage = JobStage.PENDING.value
+        job.error_message = "Failed to enqueue job for processing. Check Redis/Celery worker configuration."
+        job.completed_at = datetime.utcnow()
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error_code": "queue_unavailable",
+                "message": "Job could not be queued for processing",
+            }
+        )
     
     # ===== Step 4: Return response =====
     return JobStatusResponse(
